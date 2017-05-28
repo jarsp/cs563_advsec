@@ -1,6 +1,6 @@
 all:
 	pdflatex litrev
-	bibtex litrev
+	biber litrev
 	pdflatex litrev
 	pdflatex litrev
 
