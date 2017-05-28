@@ -1,18 +1,155 @@
 % arara: pdflatex
-% arara: bibtex
+% arara: biber
 % arara: pdflatex
 % arara: pdflatex
 \documentclass[11pt]{article}
 
-\author{Benjamin Lim \qquad Bernard Lim}
-\title{AEG Literature}
+\usepackage{biblatex}
+\addbibresource{bibliography.bib}
+
+\usepackage{geometry}
 
 \begin{document}
-\maketitle
 
-\cite{AEG}
+\section{AEG via Symbolic Methods}
 
-\bibliographystyle{alpha}
-\bibliography{bibliography.bib}
+Various variants of AEG (Automatic Exploit Generation) have been studied, most
+often by Brumley's team at CMU. Nonexhaustively:
+
+\begin{itemize}
+\item
+    Automatic Exploit Generation \cite{AEG}
+    \begin{itemize}
+    \item
+        Demonstrates end-to-end system for generating exploits from the source
+        of an application, ran on various small-medium applications successfully
+    \item
+        Entirely based on (dynamic) symbolic (and concolic) execution,
+        leveraging KLEE
+    \item
+        Preconditioned symbolic execution, i.e. using heuristics to prune
+        symbolic branches, to mitigate path explosion
+    \item
+        Environment modelling to handle syscalls and other interactions
+    \item
+        They have a short updated article in 2014 \cite{AEG14} that presents
+        their binary AEG tool Mayhem. Report also includes a short history of
+        AEG
+    \end{itemize}
+
+\item
+    Automatic patch-Based Exploit Generation is Possible: Techniques and
+    Implications \cite{APEG}
+    \begin{itemize}
+    \item
+        Generating exploit for binaries that have been patched, by examining
+        differences
+    \item
+        Assumes that patches for (input sanitization) vulnerabilities typically
+        add some new check, so generates candidate exploits for the unpatched
+        version that fail these checks
+    \item
+        Handles path explosion by doing dynamic analysis up to some instruction
+        $i$ on the path to the new check, and then does static analysis
+        (i.e. model checking) for the remainder of the path to the new check.
+        Tries to find a combination of the two solutions that are compatible
+    \end{itemize}
+
+\item
+    CRAX: Software Crash Analysis for Automatic Exploit Generation by Modeling
+    Attacks as Symbolic Continuations \cite{CRAX}
+    \begin{itemize}
+    \item
+        Uses crashing executions to guide concolic execution to find bugs
+        (primarily control hijack attacks) in binaries
+    \item
+        Concretization of irrelevant functions (standard practice in dynamic
+        symbolic execution/concolic execution)
+    \item
+        Uses S$^2$E for system simulation
+    \item
+        Runs on large applications (approx. 1-2M LOC)
+    \end{itemize}
+\end{itemize}
+
+\section{AEG via Hybrid Fuzzing/Symbolic Execution}
+
+More recently, esp. wrt. CGC \cite{CGC}, combinations of fuzzing and symbolic
+execution techniques have become more popular. Certainly worth looking at all
+the CGC finalists. CGC also involved automated patching of vulnerabilities,
+which is something interesting to look at as well.
+
+\begin{itemize}
+\item
+    Cyber Grand Shellphish \cite{CGS}
+    \begin{itemize}
+    \item
+        A report by the CGC Shellphish team in Phrack
+    \item
+        Bunch of explanation of the contest format as well as their approach,
+        and a number of other ideas
+    \item
+        TODO: Finish reading, probably has lots of references as well
+    \end{itemize}
+
+\item
+    Driller: Augmenting Fuzzing Through Selective Symbolic Execution
+    \cite{DRILLER}
+    \begin{itemize}
+    \item
+        Important paper that improved the state-of-the-art by augmenting
+        fuzzing with symbolic execution in a novel manner
+    \item
+        Key idea: there are broadly two types of inputs to conditional
+        branches, namely 'general input' of which many different inputs could
+        work, and 'specific input', of which only a tiny fraction of inputs
+        pass the check. Specific input checks logically separate the application
+        into compartments. Exploration within a compartment is easily handled
+        by a fuzzer, while pushing exploration between compartments is best
+        handled by symbolic execution. This helps mitigate path explosion in
+        symbolic execution as well as we are usually looking just one part of
+        the application, and lets us have the benefits of fuzzing.
+    \item
+        The basic idea of combining the two has been done before, but usually
+        in the form of fuzz, then symbolically execute, and negate the
+        accumulated precondition to gain maximum code coverage. However it lacks
+        the key insight above, and ends up wasting time by exploring branches
+        within a single compartment using symbolic execution.
+    \item
+        This paper was the basis for the Shellphish team, they compare it to
+        other techniques as well, a lot of references to look at. Have to look
+        a bit more at this paper as well.
+    \end{itemize}
+\end{itemize}
+
+\section{Background and Theory}
+
+There's a fair amount of background theory that goes into these things, but the
+basic ideas are fairly simple. Here are some topics to look out for, feel free
+to add more:
+
+\begin{itemize}
+\item
+    Basic first-order logic concepts, e.g. models, satisfiability, entailment
+    provability, soundness, completeness, etc.. Most texts on first order logic
+    will do. \cite{COC} is a fairly good one and also talks a little bit about
+    decision procedures which are used in SMT solvers, although that is a little
+    bit less relevant for us (probably)
+\item
+    Satisfiability Modulo Theories (SMT) solvers. The canonical example of an
+    SMT solver is Microsoft's Z3 \cite{Z3}
+\item
+    (Dynamic) Symbolic Execution, and Concolic Execution. There are many
+    resources on this with varying degrees of clarity, here is one possibility
+    \cite{SymEx}
+\item
+    "Static" Symbolic Execution, a.k.a. (Bounded) Model Checking. Once again
+    there are many resources on this. There are many different ways to do
+    model checking, \cite{LICS} looks at some of the ideas, though probably
+    only some of the key ideas are relevant
+\end{itemize}
+
+\printbibheading
+\printbibliography
 
 \end{document}
