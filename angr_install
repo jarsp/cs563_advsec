@@ -1,0 +1,63 @@
+1. We will be roughly following the dev build instructions
+(https://docs.angr.io/INSTALL.html). The angr project is not
+compatible with Python3.
+
+2. Install pypy and the pypy-dev library. The 16.04 distro
+should have the Python2 version of pypy. Make sure you get
+that and not the Python3 pypy, else you have to go to their
+website (https://pypy.org/download.html) and use a binary
+or compile from source (the binaries for Linux go to 14.04).
+
+sudo apt install pypy pypy-dev -y
+
+3. Install an updated version of pip for Python 2 (the ones
+in the distros are usually outdated as far as I know). I
+usually use get-pip.py (https://pip.pypa.io/en/stable/installing/)
+
+wget https://bootstrap.pypa.io/get-pip.py
+pypy get-pip.py
+
+4. Install virtualenvwrapper. You may (?) need sudo, maybe
+you can use some option of pip to install as user if you
+wish. (http://virtualenvwrapper.readthedocs.io/en/latest/install.html)
+
+pip install virtualenvwrapper
+
+5. Add the following to the end of the shell startup file
+(bashrc, zshrc, etc.). Restart shell.
+
+export WORKON_HOME=$HOME/.virtualenvs
+export PROJECT_HOME=$HOME/Devel
+source /usr/local/bin/virtualenvwrapper.sh
+
+6. Clone the angr-dev repo, and create a virtual environment
+for your project. DO NOT use sudo at any point here. If you
+have to you probably have messed up something. mkvirtualenv
+should automatically startup the angr virtualenv.
+
+git clone https://github.com/angr/angr-dev
+cd angr-dev
+mkvirtualenv
+
+7. Run the setup script. If you have any dependencies missing, it will
+bring them up. Install all of the missing dependencies using
+apt-get. If it doesn't complain, then you will be in step 8.
+
+./setup.sh
+
+8. Build angr and related projects. This will clone a bunch of repos
+and compile and install them. Each repo basically has a bunch
+of mirrors, some of which are not accessible to the public.
+The script might ask you for your Github username and password
+repeatedly, just leave those blank, it will fail and try another
+mirror of the repo in question. You might have to do this repeatedly.
+
+./setup.sh
+
+8. Once done you can use angr and the related libraries in your
+virtualenvironment. You can leave the virtualenv with `deactivate` and
+start the virtualenv with `workon angr`.
+
+9. ??
+
+10. Profit
