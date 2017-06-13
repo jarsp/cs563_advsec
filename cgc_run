@@ -1,0 +1,137 @@
+Tested on 16.04.
+
+Running CGC binaries
+====================
+1. We will be using the Final Event vm. I suppose this will work for the
+qualifying event code as well. Resources are available at 
+https://repo.cybergrandchallenge.com/release-cfe/ as well as
+https://github.com/CyberGrandChallenge.
+
+Setting Up CGC (DECREE) VM
+==========================
+Related Documentation: https://github.com/CyberGrandChallenge/cgc-release-documentation/blob/master/walk-throughs/running-the-vm.md
+Also: https://github.com/CyberGrandChallenge/cgc-release-documentation/blob/master/walk-throughs/virtual-competiton.md
+
+2. You will have to set up the CGC (DECREE) VM to run stuff. Install Vagrant and
+Virtualbox (I'm not sure it works with VMWare, but it might).
+
+sudo apt install vagrant virtualbox
+
+3. Download the Vagrantfile and image for the VM.
+
+mkdir cgc
+cd cgc
+wget https://cgcdist.s3.amazonaws.com/release-cfe/boxes/Vagrantfile
+wget https://cgcdist.s3.amazonaws.com/release-cfe/boxes/cgc-linux-dev.box
+
+4. Install the box and test the VM. Some of the links in the Vagrantfile and
+the vm.json are broken so it is easier to do it this way.
+
+vagrant box add cgc-linux-dev.box --name cgc-linux-dev
+vagrant up
+
+5. You will now be able to ssh into the VM (via Vagrant). Helpful commands:
+
+vagrant ssh
+vagrant suspend (can resume with vagrant up)
+vagrant halt
+
+6. See the documentation for more details (e.g. shared folders, etc.)
+
+Building Challenge Binaries
+===========================
+Related Documentation: https://github.com/CyberGrandChallenge/cgc-release-documentation/blob/master/walk-throughs/building-a-cb.md and a bunch of others
+
+1. Connect to the Vagrant VM (if you aren't already in it).
+
+cd cgc
+vagrant up
+vagrant ssh
+
+2. Copy the challenge binary sources to the shared folder (for convenience).
+
+cp -r /usr/share/cgc-sample-challenges /vagrant
+
+3. To build a challenge binary, just navigate to that folder and run make. For
+some reason some of the binaries don't seem to be able to build properly, e.g.
+CADET_00001 and CADET_00003 (in cgc-sample-challenges/examples), I'm not sure
+why yet. The output challenge binary will be created in the bin subdirectory.
+
+cd /vagrant/cgc-sample-challenges/cqe-challenges/CROMU_00001
+make
+
+Installing Driller
+==================
+1. The driller code is mostly in the shellphish repositories.
+(https://github.com/shellphish). I'm assuming that angr has already been
+installed using the dev setup method detailed in angr_install.
+
+2. Install tracer.
+
+workon angr
+cd angr-dev
+git clone https://github.com/angr/tracer
+pip install -e tracer
+
+3. Install some dependencies.
+
+sudo apt install build-essential libtool libtool-bin automake autoconf bison debootstrap debian-archive-keyring
+sudo apt build-dep qemu
+
+4. Install shellphish-afl.
+
+cd ..
+mkdir shellphish
+cd shellphish
+git clone https://github.com/shellphish/shellphish-afl
+pip install -e shellphish-afl
+
+5. Install driller.
+
+git clone https://github.com/shellphish/driller
+pip install -e driller
+
+6. Install the fuzzer.
+
+git clone https://github.com/shellphish/fuzzer
+pip install -e fuzzer
+
+7. Install Jupyter notebook.
+
+pip install jupyter
+
+7. There might have been some depedencies that I have forgotten, if the builds
+fail at some point it's probably because a depedency is missing. Please update
+if you can.
+
+Running Driller
+===============
+1. We need to change some settings to make AFL happy. I believe these changes
+do not persist through a restart.
+
+echo core | sudo tee /proc/sys/kernel/core_pattern
+cd /sys/devices/system/cpu; echo performance | sudo tee cpu*/cpufreq/scaling_governor; cd -
+echo 1 | sudo tee /proc/sys/kernel/sched_child_runs_first
+
+2. Make sure you have a compiled CGC binary.
+
+3. Run shellphuzz (which came with the fuzzer repo), e.g.
+
+shellphuzz path/to/binary -c 4 -d 4 -i -f 60
+
+-c is the number of afl cores
+-d is the number of driller cores
+-f lets you force an execution of driller before pending_favs = 0 after a
+   specified number of seconds
+-i drops you into the IPython notebook.
+
+4. Inside the IPython notebook you can print the value of fuzzer.stats to see
+the afl statistics of the fuzzers. Important ones include pending_favs,
+unique_hangs and unique_crashes. You can print the list of crashes found so far
+by calling fuzzer.crashes(). The fuzzer continues running in the background
+of the notebook. You can run `killall pypy` from the terminal command line
+to kill all the afl and driller threads, assuming that there are no other
+running pypy processes.
+
+5. Try examples/CADET_00003 for a binary that crashes really easily. CROMU_00001
+seems to be pretty hard to crash.
