@@ -1,0 +1,91 @@
+CGC, Driller and Angr
+=====================
+- Driller architecture and limitations
+--- Architecture
+----- Explain concept of specific and general input
+----- Can run on a single computer or on multiple nodes (the latter I did not really explore)
+----- Starts AFL runners
+----- AFL fuzzes and tries to discover new interesting inputs, writes to work
+      directory
+----- After a specified time, or when AFL runs out of interesting paths to explore,
+      invokes the symbolic execution callback
+----- Callback reads in the paths discovered by AFL from the work directory.
+----- Uses the angr Tracer module to constrain the input to the one given by
+      AFL, symbolically execute
+----- Do the usual negating branch condition trick to find new paths that have
+      not been explored at all before
+----- Execute each path up to 1024 more steps symbolically to discover new
+      branches (this is to help with multiple specific conditions on the input)
+----- Puts newly discovered paths as input to AFL
+----- Run AFL, repeat until crash found
+--- Limitations
+----- Pretty much only runs well on CGC binaries, symbolic execution will probably
+      not follow path taken by QEMU
+----- Quite a lot of work required to make sure that the symbolic execution is
+      faithful enough to real execution for it to work on a real OS
+
+- CGC environment, libc and limitations
+--- CGC environment
+----- Very simplified OS
+----- VM provided by DARPA
+----- Exposes only 7 syscalls to be used by challenge binaries (_terminate,
+      receive, transmit, random, fdwait, allocate, deallocate)
+----- No filesystem syscalls (some challenge binaries simulated filesystems)
+----- Allocate/deallocate allocates full pages of memory, zeroed out
+----- Only relevant file descriptors are stdin and stdout
+----- Compile challenge binaries in the VM using a modified clang
+----- Two types of exploits: Crash, and memory leak of memory from a secret
+      page passed to the main program (simulating 'important secret information')
+----- Not all the binaries compile for whatever reason
+--- Libc
+----- At first wanted to see if driller could be ported to x64
+----- As mentioned above we found out that this would be very hard
+----- Instead try to port programs into the CGC environment to be analysed
+----- I collected some of the implementations of some of the libc functions that
+      were used by the sample challenge binaries together to make a partial libc
+----- Can run some simple programs
+
+- Angr architecture
+--- Symbolic execution engine underlying driller
+--- Consists of many parts
+----- CLE: Program loader, provides information about the binary and process
+      memory
+----- Claripy: Solver interface that abstracts away the actual solver backend
+               (of which there are several choices) and provides several solver
+               frontends
+----- simuvex: symbolic execution workhorse, provides definitions of various
+               engines to simulate execution, primarily the vex engine which
+               simulates vex instructions, and python interface to the unicorn
+               engine which does concrete execution. definitions of many key
+               classes esp. the SimState class. Plugin architecture to
+               customize various parts of the state, including memory,
+               breakpoints, solver, etc. Definitions of syscall and libc stubs
+               (SimProcedures) are also in this repository.
+----- angr: Main interface of angr, most importantly providing paths and pathgroups
+            to manage execution. Provides wrappers for the pertinent parts of 
+            symbolic execution, e.g. solver, state, memory. Plugins to provide
+            extra analyses on the binary, various path exploration techniques
+            (strategies). All these things are managed by angr.Project and
+            angr.factory.
+
+- Automatic function summaries
+--- Hooks simple functions (no loops/recursion, side effects)
+--- Functions may be stateful (e.g. read from global variables)
+--- Heuristics for determining the above
+----- Attempt to write to addresses outside of stack frame is a side effect
+----- Attempt to read from addresses that are constants are global reads
+----- Cycles in CFG correspond to some looping behavior
+----- Check calls to determine recursive behavior
+--- Generating summaries
+----- Summarise functions from bottom of callgraph to top, skipping initializers
+----- Replace all global addresses that could be written to by the function with
+      symbolic values
+----- Symbolically execute function with symbolic arguments and collect symbolic
+      output
+----- Capable of composing function summaries
+----- Actual hook takes this precomputed symbolic value, replaces the symbolic
+      arguments with the actual arguments and symbolic globals with the actual
+      globals at the time of execution, simplifies and uses that as the return
+      value
+--- Implemented as an Analysis in angr for convenient usage, hope to extend
+    further in future
